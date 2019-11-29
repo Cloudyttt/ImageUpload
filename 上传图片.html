@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>上传图片</title>
+  <meta charset="UTF-8">
+  <!-- import CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+  <style>
+    #app {
+      width: 600px;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <el-tag type="success">返回值</el-tag>
+  <el-card class="box-card" style="margin-top: 10px">
+    <div>{{result}}</div>
+  </el-card>
+  
+  <el-form style="display: flex;flex-direction: row;">
+    <el-form-item label="标题" style="margin: 10px">
+      <el-input v-model="title" type="text"></el-input>
+    </el-form-item>
+    <el-form-item label="序号" style="margin: 10px">
+      <el-input v-model="articleID" type="text"></el-input>
+    </el-form-item>
+    <el-form-item label="语言" style="margin: 10px">
+      <el-select v-model="value" placeholder="请选择">
+        <el-option
+            v-for="item in options"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value">
+        </el-option>
+      </el-select>
+    </el-form-item>
+    <el-form-item label="点赞" style="margin: 10px">
+      <el-input v-model="likes" type="text"></el-input>
+    </el-form-item>
+  </el-form>
+  <el-button type="primary" @click="query">查询</el-button>
+  <el-button type="primary" @click="insert">插入</el-button>
+  <el-button type="primary" @click="update">更新</el-button>
+  <el-button type="danger" @click="_delete">删除</el-button>
+  <div style="margin-top: 30px"></div>
+  <el-upload
+      :data="data"
+      multiple
+      ref="upload"
+      class="upload-demo"
+      action="http://localhost:3000/update"
+      :on-preview="handlePreview"
+      :on-remove="handleRemove"
+      :file-list="fileList"
+      :on-success="uploadSucceed"
+      list-type="picture"
+      :auto-upload="false">
+    <el-button slot="trigger" size="small" type="primary">选取文件</el-button>
+    <el-button style="margin-left: 10px;" size="small" type="success" @click="submitUpload">上传到服务器</el-button>
+    <div slot="tip" class="el-upload__tip">可上传jpeg/png/jpg/gif文件，且不超过10MB</div>
+  </el-upload>
+  <div style="margin-top: 50px"></div>
+</div>
+</body>
+<!-- import Vue before Element -->
+<script src="https://unpkg.com/vue/dist/vue.js"></script>
+<!-- import JavaScript -->
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<!--axios-->
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+<script>
+  new Vue({
+    el: '#app',
+    data: function () {
+      return {
+        options: [
+          {
+            value: 'CN',
+            label: '中文'
+          },
+          {
+            value: 'EN',
+            label: '英文'
+          }],
+        value: '',
+        result: '无数据',
+        title: '',
+        articleID: -1,
+        likes: 99,
+        visible: false,
+        fileList: [],
+      }
+    },
+    computed: {
+      data: function () {
+        let that = this;
+        let title = that.title;
+        let articleID = that.articleID;
+        let lang = that.value;
+        let likes = that.likes;
+        let uptime = that.getDate();
+        return {
+          title,
+          articleID,
+          lang,
+          likes,
+          uptime
+        }
+      }
+    },
+    methods: {
+      //日期时间补零处理
+      convert(s) {
+        return s < 10 ? '0' + s : s;
+      },
+      //获取当前时间
+      getDate() {
+        let myDate = new Date();
+        //获取当前年
+        let year = myDate.getFullYear();
+        //获取当前月
+        let month = myDate.getMonth() + 1;
+        //获取当前日
+        let date = myDate.getDate();
+        let h = myDate.getHours(); //获取当前小时数(0-23)
+        let m = myDate.getMinutes(); //获取当前分钟数(0-59)
+        let s = myDate.getSeconds();
+        //获取当前时间
+        return year + '-' + this.convert(month) + "-" + this.convert(date) + " " + this.convert(h) + ':' + this.convert(m) + ":" + this.convert(s);
+      },
+
+      //原生AJAX
+      loadXMLDoc(url = 'http://localhost:3000/article/query', data = {}) {
+        let that = this;
+        console.log('url:', url, 'data:', data);
+        let xmlHttp;
+        if (window.XMLHttpRequest) {
+          //IE7+, Firefox, Chrome, Opera, Safari 浏览器执行代码
+          xmlHttp = new XMLHttpRequest();
+        } else {
+          // IE6, IE5 浏览器执行代码
+          xmlHttp = new ActiveXObject("Microsoft.XMLHTTP");
+        }
+
+        xmlHttp.onreadystatechange = function () {
+          if (xmlHttp.readyState === 4 && xmlHttp.status === 200) {
+            //	第三步
+            that.result = xmlHttp.responseText;
+          }
+        };
+        //	第二步
+        xmlHttp.open("GET", url, true);
+        xmlHttp.send();
+      },
+      query() {
+        console.log('查询');
+        axios.get('http://localhost:3000/query', {
+          params: {
+            id: this.articleID
+          }
+        })
+          .then(response => {
+            this.result = response.data;
+          })
+          .catch(error => {
+            this.result = error;
+          });
+      },
+      insert() {
+        console.log('插入');
+        let data = this.data;
+        axios.get('http://localhost:3000/article/insert', {
+          params: {
+            data
+          }
+        })
+          .then(response => {
+            this.result = response.data;
+            this.articleID = response.date
+          })
+          .catch(error => {
+            this.result = error;
+          });
+      },
+      update() {
+        console.log('更新');
+        let data = this.data;
+        axios.get('http://localhost:3000/update', {
+          params: {
+            id: this.articleID,
+            lang: this.lang
+          }
+        })
+          .then(response => {
+            this.result = response.data;
+          })
+          .catch(error => {
+            this.result = error;
+          });
+      },
+      _delete() {
+        console.log('删除');
+        axios.get('http://localhost:3000/delete', {
+          params: {
+            id: this.articleID,
+            lang: this.value
+          }
+        })
+          .then(response => {
+            this.result = response.data;
+          })
+          .catch(error => {
+            this.result = error;
+          });
+      },
+      handleRemove(file, fileList) {
+        console.log(file, fileList);
+      },
+      handlePreview(file) {
+        console.log(file);
+      },
+      upImage() {
+        console.log('上传到服务器')
+      },
+      submitUpload() {
+        this.$refs.upload.submit();
+      },
+      uploadSucceed(response, file, fileList) {
+        console.log('response', response);
+        console.log('file', file);
+        console.log('fileList', fileList);
+      }
+    }
+  })
+</script>
+</html>
